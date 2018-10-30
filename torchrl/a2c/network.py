@@ -45,9 +45,10 @@ class ActorCritic(nn.Module):
     def loss_func(self, rollout):
         log_probs, values, returns, advantages, entropys = map(
             lambda x: torch.cat(x, dim=0), zip(*rollout))
-        policy_loss = (-advantages * log_probs).mean()
-        value_loss = self.mse(values, returns)
-        entropy_loss = entropys.mean()
-        loss = policy_loss - entropy_loss * self.e_coef + value_loss * self.v_coef
 
-        return policy_loss, value_loss, entropy_loss, loss
+        policy_loss = (-advantages * log_probs)
+        value_loss = 0.5 * (returns - values).pow(2)
+        entropy_loss = entropys.mean()
+        loss = (policy_loss - entropy_loss * self.e_coef + value_loss * self.v_coef).mean()
+
+        return policy_loss.mean(), value_loss.mean(), entropy_loss, loss

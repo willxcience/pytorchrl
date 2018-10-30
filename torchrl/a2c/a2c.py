@@ -13,7 +13,7 @@ class A2C(object):
         self.model = model
         self.optimzier = optimzier
         self.params = params
-        self.episode_rewards = deque(maxlen=10)
+        self.episode_rewards = deque(maxlen=50)
         self.online_rewards = np.zeros(params["num_workers"])
         self.num_workers = params["num_workers"]
         self.gamma = params["discount_gamma"]
