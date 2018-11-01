@@ -20,6 +20,27 @@ def weights_init(m):
         nn.init.orthogonal_(m.weight, gain=nn.init.calculate_gain("relu"))
         m.bias.data.fill_(0)
 
+def init(module, weight_init, bias_init, gain=1):
+    weight_init(module.weight.data, gain=gain)
+    bias_init(module.bias.data)
+    return module
+
+# Extremely important
+class Categorical(nn.Module):
+    def __init__(self, num_inputs, num_outputs):
+        super(Categorical, self).__init__()
+
+        init_ = lambda m: init(m,
+              nn.init.orthogonal_,
+              lambda x: nn.init.constant_(x, 0),
+              gain=0.01)
+
+        self.linear = init_(nn.Linear(num_inputs, num_outputs))
+
+    def forward(self, x):
+        x = self.linear(x)
+        return torch.distributions.Categorical(logits=x)
+
 
 class ActorCritic(nn.Module):
     def __init__(self, params):
@@ -32,12 +53,11 @@ class ActorCritic(nn.Module):
         self.cnn_head = NatureCNN(params)
 
         # policy function
-        self.pf = nn.Linear(512, self.n_actions)
-        self.distf = torch.distributions.Categorical
+        #self.pf = nn.Linear(512, self.n_actions)
+        self.distf = Categorical(512, self.n_actions)
 
         # value function
         self.vf = nn.Linear(512, 1)
-        self.mse = nn.MSELoss()
 
         # self.apply(weights_init)
 
@@ -59,7 +79,7 @@ class ActorCritic(nn.Module):
         """
         x = self.cnn_head(obs / 255.0)
         v = self.vf(x)
-        pd = self.distf(logits=self.pf(x))
+        pd = self.distf(x)
         return pd.sample(), v
 
     def eval_action(self, obs, action):
@@ -68,7 +88,7 @@ class ActorCritic(nn.Module):
         Return values, log_probs, entropys
         """
         x = self.cnn_head(obs / 255.0)
-        pd = self.distf(logits=self.pf(x))
+        pd = self.distf(x)
         v = self.vf(x)
         return pd.log_prob(action), v, pd.entropy().mean()
 

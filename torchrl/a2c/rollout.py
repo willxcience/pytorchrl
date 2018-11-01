@@ -45,11 +45,10 @@ class RolloutStorage(object):
         # increment step index
         self.step = (self.step + 1) % self.rollout_len
 
-    #----for future work----
-    # def after_update(self):
-    #     self.obs[0].copy_(self.obs[-1])
-    #     self.recurrent_hidden_states[0].copy_(self.recurrent_hidden_states[-1])
-    #     self.masks[0].copy_(self.masks[-1])
+    # copy after
+    def after_update(self):
+        self.obs[0].copy_(self.obs[-1])
+        self.masks[0].copy_(self.masks[-1])
 
 
     def compute_returns(self, next_value):
