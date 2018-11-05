@@ -8,11 +8,13 @@ class RolloutStorage(object):
         self.num_workers = params["num_workers"]
         self.obs_shape = params["obs_shape"]
         self.action_shape = params["action_shape"]
+        self.rnn_size = params["rnn_size"]
 
         # returns hyper parameters
         self.gamma = params["discount_gamma"]
         self.tau = params["gae_tau"]
         self.use_gae = params["use_gae"]
+    
 
         self.obs = torch.zeros(self.rollout_len + 1,
                                self.num_workers, *self.obs_shape)
@@ -25,6 +27,9 @@ class RolloutStorage(object):
         # masks is shifted downward one step
         self.masks = torch.zeros(self.rollout_len + 1, self.num_workers)
 
+        # used for rnn
+        self.rnn_states = torch.zeros(self.rollout_len + 1, self.num_workers, self.rnn_size)
+
         # local variable
         self.step = 0
 
@@ -35,13 +40,16 @@ class RolloutStorage(object):
         self.returns = self.returns.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
+        self.rnn_states = self.rnn_states.to(device)
 
-    def insert(self, obs, rewards, masks, actions, values):
+    def insert(self, obs, rewards, masks, actions, values, rnn_states=None):
         self.obs[self.step + 1].copy_(obs)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
         self.actions[self.step].copy_(actions)
         self.values[self.step].copy_(values)
+        if rnn_states is not None:
+            self.rnn_states[self.step + 1].copy_(rnn_states)
         # increment step index
         self.step = (self.step + 1) % self.rollout_len
 
@@ -49,6 +57,7 @@ class RolloutStorage(object):
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
         self.masks[0].copy_(self.masks[-1])
+        self.rnn_states[0].copy_(self.rnn_states[-1])
 
 
     def compute_returns(self, next_value):

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 
 from ..network import NatureCNN
 import pdb
@@ -25,6 +26,7 @@ def init(module, weight_init, bias_init, gain=1):
     bias_init(module.bias.data)
     return module
 
+
 # Extremely important
 class Categorical(nn.Module):
     def __init__(self, num_inputs, num_outputs):
@@ -48,9 +50,12 @@ class ActorCritic(nn.Module):
         self.e_coef = params["entropy_coef"]
         self.v_coef = params["value_coef"]
         self.n_actions = params["action_shape"]
+        self.rnn_size = params["rnn_size"]
 
         # cnn head
+        # self.cnn_head = torchvision.models.resnet34(pretrained=True)
         self.cnn_head = NatureCNN(params)
+        self.rnn = nn.GRU(self.rnn_size, 512)
 
         # policy function
         #self.pf = nn.Linear(512, self.n_actions)
@@ -59,21 +64,12 @@ class ActorCritic(nn.Module):
         # value function
         self.vf = nn.Linear(512, 1)
 
-        # self.apply(weights_init)
+        self.apply(weights_init)
 
     def forward(self, x):
         raise NotImplementedError
-        # x = self.cnn_head(x)
-        # p = self.pf(x)
-        # v = self.vf(x)
 
-        # pd = self.distf(logits=p)
-        # action = pd.sample()
-        # log_prob = pd.log_prob(action)
-
-        # return v, action, log_prob, pd.entropy()
-
-    def act(self, obs):
+    def act(self, obs, masks=None, rnn_hxs=None):
         """
         Get action based on the observations
         """
@@ -82,7 +78,7 @@ class ActorCritic(nn.Module):
         pd = self.distf(x)
         return pd.sample(), v
 
-    def eval_action(self, obs, action):
+    def eval_action(self, obs, action, masks=None, rnn_hxs=None):
         """
         Get value and log probalities based on the observations and actions
         Return values, log_probs, entropys
@@ -92,7 +88,7 @@ class ActorCritic(nn.Module):
         v = self.vf(x)
         return pd.log_prob(action), v, pd.entropy().mean()
 
-    def get_value(self, obs):
+    def get_value(self, obs, masks=None, rnn_hxs=None):
         """Return from value network"""
         x = self.cnn_head(obs / 255.0)
         v = self.vf(x)
