@@ -5,6 +5,7 @@ import torchvision
 
 from ..network import NatureCNN
 import pdb
+import torchvision
 
 
 def weights_init(m):
@@ -144,7 +145,9 @@ class ActorCritic(nn.Module):
 
         # cnn head
         # self.cnn_head = torchvision.models.resnet34(pretrained=True)
-        self.cnn_head = NatureCNN(params)
+        #self.cnn_head = NatureCNN(params)
+        self.cnn_head = torchvision.models.resnet34(pretrained=True)
+        self.cnn_head = nn.Sequential(*list(self.cnn_head.children())[:-1])
         self.rnn = RNN(512, 512)
 
         # policy function
@@ -154,7 +157,7 @@ class ActorCritic(nn.Module):
         # value function
         self.vf = nn.Linear(512, 1)
 
-        self.apply(weights_init)
+        # self.apply(weights_init)
 
     def forward(self, x):
         raise NotImplementedError
@@ -163,7 +166,8 @@ class ActorCritic(nn.Module):
         """
         Get action based on the observations
         """
-        x = self.cnn_head(obs / 255.0)
+        obs = F.interpolate(obs, (224, 224))
+        x = self.cnn_head(obs / 255.0).squeeze()
         x, rnn_hxs = self.rnn(x, masks, rnn_hxs)
         x = x.squeeze()
         v = self.vf(x)
@@ -175,7 +179,8 @@ class ActorCritic(nn.Module):
         Get value and log probalities based on the observations and actions
         Return values, log_probs, entropys
         """
-        x = self.cnn_head(obs / 255.0)
+        obs = F.interpolate(obs, (224, 224))
+        x = self.cnn_head(obs / 255.0).squeeze()
         x, rnn_hxs = self.rnn(x, masks, rnn_hxs, True)
 
         pd = self.distf(x)
@@ -184,7 +189,8 @@ class ActorCritic(nn.Module):
 
     def get_value(self, obs, masks=None, rnn_hxs=None):
         """Return from value network"""
-        x = self.cnn_head(obs / 255.0)
+        obs = F.interpolate(obs, (224, 224))
+        x = self.cnn_head(obs / 255.0).squeeze()
         x, rnn_hxs = self.rnn(x, masks, rnn_hxs)
 
         v = self.vf(x)
