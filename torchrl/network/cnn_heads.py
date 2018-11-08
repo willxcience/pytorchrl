@@ -11,10 +11,10 @@ class NatureCNN(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(32, 64, 4, 2),
             nn.ReLU(True),
-            nn.Conv2d(64, 64, 3, 1),
+            nn.Conv2d(64, 32, 3, 1),
             nn.ReLU(True)
         )
-        self.fc = nn.Linear(7*7*64, 512)
+        self.fc = nn.Linear(7*7*32, 512)
         
     def forward(self, x):
         x = self.cnn_head(x)

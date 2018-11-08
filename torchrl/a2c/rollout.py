@@ -1,5 +1,4 @@
 import torch
-from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 
 class RolloutStorage(object):
@@ -28,7 +27,7 @@ class RolloutStorage(object):
         self.masks = torch.zeros(self.rollout_len + 1, self.num_workers)
 
         # used for rnn
-        self.rnn_states = torch.zeros(self.rollout_len + 1, self.num_workers, self.rnn_size)
+        self.rnn_hxs = torch.zeros(self.rollout_len + 1, self.num_workers, self.rnn_size)
 
         # local variable
         self.step = 0
@@ -40,16 +39,15 @@ class RolloutStorage(object):
         self.returns = self.returns.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
-        self.rnn_states = self.rnn_states.to(device)
+        self.rnn_hxs = self.rnn_hxs.to(device)
 
-    def insert(self, obs, rewards, masks, actions, values, rnn_states=None):
+    def insert(self, obs, rewards, masks, actions, values, rnn_hxs=None):
         self.obs[self.step + 1].copy_(obs)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
         self.actions[self.step].copy_(actions)
         self.values[self.step].copy_(values)
-        if rnn_states is not None:
-            self.rnn_states[self.step + 1].copy_(rnn_states)
+        self.rnn_hxs[self.step + 1].copy_(rnn_hxs)
         # increment step index
         self.step = (self.step + 1) % self.rollout_len
 
@@ -57,7 +55,7 @@ class RolloutStorage(object):
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
         self.masks[0].copy_(self.masks[-1])
-        self.rnn_states[0].copy_(self.rnn_states[-1])
+        self.rnn_hxs[0].copy_(self.rnn_hxs[-1])
 
 
     def compute_returns(self, next_value):
